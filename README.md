@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🗣️ Samvad AI </h1>
+  <h1>Samvad AI </h1>
   <p><b>Your AI-Powered Debate Companion</b></p>
   <p><i>Argue smarter. Rebut harder. Win decisively.</i></p>
 
@@ -36,7 +36,7 @@ Here is a glimpse of the Samvad AI premium interface:
 
 <div align="center">
   <img src="assets/home_screen.png" alt="Samvad AI Home Dashboard" width="800"/>
-  <br><i>The Main Dashboard featuring all 5 AI Debating Tools.</i><br><br>
+  <br><i>The Main Dashboard featuring AI Debating Tools.</i><br><br>
   
   <img src="assets/live_debate.png" alt="Live AI Debate Interface" width="800"/>
   <br><i>Real-time Debate against a Gemini-powered opponent.</i><br><br>
