@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Judge Panel — Samvad AI</title>
+    <meta name="description" content="Get objective scoring and feedback from three distinct AI debate judges.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}">Speech</a>
+            <a href="{{ url_for('judge_page') }}" class="active">Judge</a>
+            <a href="{{ url_for('debate_page') }}">Debate</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="tool-container">
+            <header class="tool-header">
+                <h1 class="tool-title">⚖️ Judge Panel</h1>
+                <p class="tool-subtitle">Three AI judges with unique personalities score your debate</p>
+            </header>
+
+            <div class="tool-interface">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label" for="debateMotion">Debate Motion</label>
+                        <input type="text" id="debateMotion"
+                            placeholder="e.g. This House would ban social media for children under 16">
+                    </div>
+                    <div class="debate-sides">
+                        <div class="side-input prop">
+                            <h3>🟢 Proposition Side</h3>
+                            <textarea id="propSpeech" placeholder="Enter the proposition's arguments and speech..."
+                                rows="6"></textarea>
+                        </div>
+                        <div class="side-input opp">
+                            <h3>🟣 Opposition Side</h3>
+                            <textarea id="oppSpeech" placeholder="Enter the opposition's arguments and speech..."
+                                rows="6"></textarea>
+                        </div>
+                    </div>
+                    <button id="judgeBtn" class="btn-primary">
+                        <span class="btn-text">Get Judge Verdict</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+
+                <div class="output-section" id="outputSection">
+                    <div class="output-card">
+                        <div class="output-header">
+                            <h3 class="output-title">Judge Panel Decision</h3>
+                            <span class="ai-tag" id="aiTag">✨ AI Powered</span>
+                        </div>
+                        <div id="judgeContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        document.getElementById('judgeBtn').addEventListener('click', async () => {
+            const motion = document.getElementById('debateMotion').value.trim();
+            const proposition = document.getElementById('propSpeech').value.trim();
+            const opposition = document.getElementById('oppSpeech').value.trim();
+            const btn = document.getElementById('judgeBtn');
+            const output = document.getElementById('outputSection');
+            const container = document.getElementById('judgeContainer');
+
+            if (!motion) { showToast('Please enter the debate motion', 'error'); return; }
+            if (!proposition || !opposition) { showToast('Please enter speeches for both sides', 'error'); return; }
+
+            setLoading(btn, true);
+
+            try {
+                const data = await apiCall('/api/judge-debate', {
+                    debate: { motion, proposition, opposition }
+                });
+
+                if (data.success) {
+                    const scores = data.scores;
+                    const winner = data.winner;
+                    const bias = data.bias_check;
+
+                    // Build judges grid
+                    let judgesHTML = '';
+                    const judges = scores.individual_judges || {};
+                    if (Object.keys(judges).length > 0) {
+                        judgesHTML = '<div class="judges-grid">';
+                        for (const [key, judge] of Object.entries(judges)) {
+                            judgesHTML += `
+                                <div class="judge-card">
+                                    <div class="judge-avatar">${judge.avatar || '👤'}</div>
+                                    <div class="judge-name">${judge.judge_name || key}</div>
+                                    <div class="judge-title">${judge.title || ''}</div>
+                                    <div class="judge-comment">"${judge.comments || 'No comment.'}"</div>
+                                </div>
+                            `;
+                        }
+                        judgesHTML += '</div>';
+                    }
+
+                    // Build score comparison
+                    function buildScoreCard(sideScores, title, cssClass) {
+                        let html = `<div class="side-score-card ${cssClass}"><h4>${title}</h4>`;
+                        const criteria = ['content', 'delivery', 'rebuttal', 'evidence', 'organization'];
+                        criteria.forEach(c => {
+                            if (sideScores[c] !== undefined) {
+                                html += `<div class="score-line"><span class="label">${c}</span><span class="value">${sideScores[c]}/10</span></div>`;
+                            }
+                        });
+                        html += `<div class="score-total"><span class="label">Total</span><span class="value">${sideScores.total || '-'}</span></div>`;
+                        html += '</div>';
+                        return html;
+                    }
+
+                    // Bias warning
+                    let biasHTML = '';
+                    if (bias && bias.has_bias) {
+                        biasHTML = `
+                            <div class="bias-alert">
+                                <div class="bias-alert-title">⚠️ Bias Detected</div>
+                                <div class="bias-alert-text">${bias.message}</div>
+                            </div>
+                        `;
+                    }
+
+                    // Key moments
+                    let momentsHTML = '';
+                    if (scores.key_moments && scores.key_moments.length > 0) {
+                        momentsHTML = `
+                            <div class="feedback-section" style="margin-top: 1rem;">
+                                <div class="feedback-title">🎯 Key Moments</div>
+                                <ul class="suggestions-list">
+                                    ${scores.key_moments.map(m => `<li>${m}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <div class="winner-card">
+                            <div class="winner-label">🏆 Winner</div>
+                            <div class="winner-name">${winner}</div>
+                        </div>
+                        ${judgesHTML}
+                        <div class="score-comparison">
+                            ${buildScoreCard(scores.proposition || {}, '🟢 Proposition', 'prop')}
+                            ${buildScoreCard(scores.opposition || {}, '🟣 Opposition', 'opp')}
+                        </div>
+                        <div class="feedback-section">
+                            <div class="feedback-title">📝 Overall Feedback</div>
+                            <p class="feedback-text">${scores.feedback || 'Both sides presented reasonable arguments.'}</p>
+                        </div>
+                        ${momentsHTML}
+                        ${biasHTML}
+                    `;
+
+                    output.classList.add('visible');
+                    showToast('Verdict delivered!', 'success');
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+    </script>
+</body>
+
+</html>

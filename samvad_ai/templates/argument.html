@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Argument Generator — Samvad AI</title>
+    <meta name="description" content="Generate compelling debate arguments from multiple perspectives using AI.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}" class="active">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}">Speech</a>
+            <a href="{{ url_for('judge_page') }}">Judge</a>
+            <a href="{{ url_for('debate_page') }}">Debate</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="tool-container">
+            <header class="tool-header">
+                <h1 class="tool-title">🧠 Argument Generator</h1>
+                <p class="tool-subtitle">Generate compelling arguments from multiple perspectives</p>
+            </header>
+
+            <div class="tool-interface">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label" for="topic">Debate Topic / Motion</label>
+                        <textarea id="topic"
+                            placeholder="e.g. This House believes artificial intelligence will do more good than harm..."
+                            rows="3"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="position">Your Position</label>
+                        <select id="position">
+                            <option value="for">🟢 For (Supporting)</option>
+                            <option value="against">🔴 Against (Opposing)</option>
+                        </select>
+                    </div>
+                    <button id="generateBtn" class="btn-primary">
+                        <span class="btn-text">Generate Arguments</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+
+                <div class="output-section" id="outputSection">
+                    <div class="output-card">
+                        <div class="output-header">
+                            <h3 class="output-title">Generated Arguments</h3>
+                            <span class="ai-tag" id="aiTag">✨ AI Powered</span>
+                        </div>
+                        <div id="argumentsContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const topic = document.getElementById('topic').value.trim();
+            const position = document.getElementById('position').value;
+            const btn = document.getElementById('generateBtn');
+            const output = document.getElementById('outputSection');
+            const container = document.getElementById('argumentsContainer');
+
+            if (!topic) { showToast('Please enter a debate topic', 'error'); return; }
+
+            setLoading(btn, true);
+
+            try {
+                const data = await apiCall('/api/generate-argument', { topic, position });
+
+                if (data.success) {
+                    container.innerHTML = '';
+                    const categories = ['💰 Economic', '👥 Social', '⚖️ Ethical', '🔧 Practical', '🌍 Global', '📊 Analytical'];
+
+                    data.arguments.forEach((arg, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'argument-item';
+                        div.style.animationDelay = `${i * 0.1}s`;
+                        div.innerHTML = `
+                            <div class="argument-number">${i + 1}</div>
+                            <p class="argument-text">${arg}</p>
+                            <div class="argument-actions">
+                                <button class="copy-btn" onclick="copyText(\`${arg.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">📋 Copy</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+
+                    output.classList.add('visible');
+                    showToast('Arguments generated!', 'success');
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samvad AI — Your AI-Powered Debate Companion</title>
+    <meta name="description"
+        content="Samvad AI is your intelligent debate companion. Generate arguments, craft rebuttals, evaluate speeches, and get AI judge feedback — all powered by Google Gemini.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+    <div class="bg-grid"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}">Speech</a>
+            <a href="{{ url_for('judge_page') }}">Judge</a>
+            <a href="{{ url_for('debate_page') }}">Debate <span class="ai-badge">LIVE</span></a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <section class="hero">
+            <h1 class="hero-title">Samvad AI</h1>
+            <p class="hero-subtitle">Your AI-powered debate companion — argue smarter, rebut harder, win decisively.</p>
+            <div class="hero-accent"></div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">AI Tools</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">AI Judges</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">Topics</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="features-grid">
+            <a href="{{ url_for('argument_page') }}" class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3 class="feature-title">Argument Generator</h3>
+                <p class="feature-desc">Generate compelling arguments from economic, social, ethical & practical
+                    perspectives</p>
+            </a>
+
+            <a href="{{ url_for('rebuttal_page') }}" class="feature-card">
+                <div class="feature-icon">⚔️</div>
+                <h3 class="feature-title">Rebuttal Assistant</h3>
+                <p class="feature-desc">Craft powerful counter-arguments with strategic weakness analysis</p>
+            </a>
+
+            <a href="{{ url_for('speech_page') }}" class="feature-card">
+                <div class="feature-icon">🎤</div>
+                <h3 class="feature-title">Speech Evaluator</h3>
+                <p class="feature-desc">Get detailed scoring and AI feedback on clarity, structure & persuasiveness</p>
+            </a>
+
+            <a href="{{ url_for('judge_page') }}" class="feature-card">
+                <div class="feature-icon">⚖️</div>
+                <h3 class="feature-title">Judge Panel</h3>
+                <p class="feature-desc">Three AI judges with unique personalities score your debate with bias detection
+                </p>
+            </a>
+
+            <a href="{{ url_for('debate_page') }}" class="feature-card">
+                <div class="feature-icon">🔥</div>
+                <h3 class="feature-title">Live AI Debate</h3>
+                <p class="feature-desc">Debate against an AI opponent in real-time — sharpen your skills live</p>
+            </a>
+        </div>
+
+        <section class="motion-section">
+            <div class="motion-card">
+                <div class="motion-label">📅 Today's Debate Motion</div>
+                <p class="motion-text" id="motionText">Loading today's motion...</p>
+                <div class="motion-date" id="motionDate"></div>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rebuttal Assistant — Samvad AI</title>
+    <meta name="description" content="Craft powerful counter-arguments with AI-powered strategic analysis.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}" class="active">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}">Speech</a>
+            <a href="{{ url_for('judge_page') }}">Judge</a>
+            <a href="{{ url_for('debate_page') }}">Debate</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="tool-container">
+            <header class="tool-header">
+                <h1 class="tool-title">⚔️ Rebuttal Assistant</h1>
+                <p class="tool-subtitle">Craft powerful counter-arguments with strategic weakness analysis</p>
+            </header>
+
+            <div class="tool-interface">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label" for="opponentArg">Opponent's Argument</label>
+                        <textarea id="opponentArg"
+                            placeholder="Paste or type the opponent's argument you want to rebut..."
+                            rows="4"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="context">Additional Context (Optional)</label>
+                        <textarea id="context" placeholder="Any extra context about the debate topic..."
+                            rows="2"></textarea>
+                    </div>
+                    <button id="rebuttalBtn" class="btn-primary">
+                        <span class="btn-text">Generate Rebuttal</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+
+                <div class="output-section" id="outputSection">
+                    <div class="output-card">
+                        <div class="output-header">
+                            <h3 class="output-title">Your Rebuttal</h3>
+                            <span class="ai-tag" id="aiTag">✨ AI Powered</span>
+                        </div>
+                        <div id="rebuttalContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        document.getElementById('rebuttalBtn').addEventListener('click', async () => {
+            const argument = document.getElementById('opponentArg').value.trim();
+            const context = document.getElementById('context').value.trim();
+            const btn = document.getElementById('rebuttalBtn');
+            const output = document.getElementById('outputSection');
+            const container = document.getElementById('rebuttalContainer');
+
+            if (!argument) { showToast('Please enter the opponent\'s argument', 'error'); return; }
+
+            setLoading(btn, true);
+
+            try {
+                const data = await apiCall('/api/generate-rebuttal', { argument, context });
+
+                if (data.success) {
+                    const strategyLabels = {
+                        'challenge_evidence': '🔍 Challenge Evidence',
+                        'alternative_interpretation': '🔄 Alternative Interpretation',
+                        'unintended_consequences': '⚠️ Unintended Consequences',
+                        'false_dichotomy': '🎭 False Dichotomy',
+                        'scope_limitation': '📏 Scope Limitation',
+                        'precedent_analysis': '📚 Precedent Analysis',
+                        'cost_benefit_analysis': '💰 Cost-Benefit Analysis'
+                    };
+
+                    const strategyLabel = strategyLabels[data.strategy] || `🎯 ${data.strategy}`;
+                    const strength = data.strength || 7;
+
+                    let weaknessesHTML = '';
+                    if (data.weaknesses_found && data.weaknesses_found.length > 0) {
+                        weaknessesHTML = `
+                            <div class="weaknesses-list">
+                                <h5>Weaknesses Found</h5>
+                                ${data.weaknesses_found.map(w => `<div class="weakness-item">${w}</div>`).join('')}
+                            </div>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <div class="rebuttal-result">
+                            <div style="padding: 1.5rem;">
+                                <div class="strategy-badge">${strategyLabel}</div>
+                                ${data.strategy_explanation ? `<p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">${data.strategy_explanation}</p>` : ''}
+                                <p class="argument-text" style="margin-bottom: 0;">${data.rebuttal}</p>
+                                <div class="strength-bar">
+                                    <span class="strength-label">Strength</span>
+                                    <div class="strength-track">
+                                        <div class="strength-fill" style="width: ${strength * 10}%"></div>
+                                    </div>
+                                    <span class="strength-value">${strength}/10</span>
+                                </div>
+                                ${weaknessesHTML}
+                                <div class="argument-actions" style="margin-top: 1rem;">
+                                    <button class="copy-btn" onclick="copyText(document.querySelector('.argument-text').textContent)">📋 Copy Rebuttal</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    output.classList.add('visible');
+                    showToast('Rebuttal generated!', 'success');
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+    </script>
+</body>
+
+</html>

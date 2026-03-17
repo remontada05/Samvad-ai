@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live AI Debate — Samvad AI</title>
+    <meta name="description" content="Debate against an AI opponent in real-time. Sharpen your debate skills live.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}">Speech</a>
+            <a href="{{ url_for('judge_page') }}">Judge</a>
+            <a href="{{ url_for('debate_page') }}" class="active">Debate <span class="ai-badge">LIVE</span></a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="tool-container">
+            <header class="tool-header">
+                <h1 class="tool-title">🔥 Live AI Debate</h1>
+                <p class="tool-subtitle">Debate against an AI opponent — sharpen your skills in real-time</p>
+            </header>
+
+            <!-- Setup Phase -->
+            <div class="tool-interface" id="setupPhase">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label" for="debateMotion">Debate Motion</label>
+                        <input type="text" id="debateMotion"
+                            placeholder="e.g. This House believes AI should replace human judges">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="userPosition">Your Position</label>
+                        <select id="userPosition">
+                            <option value="proposition">🟢 Proposition (For)</option>
+                            <option value="opposition">🟣 Opposition (Against)</option>
+                        </select>
+                    </div>
+                    <button id="startDebateBtn" class="btn-primary">
+                        <span class="btn-text">Start Debate</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Debate Arena -->
+            <div class="debate-arena" id="debateArena">
+                <div class="debate-info">
+                    <div class="debate-motion-display" id="motionDisplay"></div>
+                    <div class="debate-round" id="roundCounter">Round 1</div>
+                </div>
+
+                <div class="chat-container" id="chatContainer">
+                    <!-- Messages will appear here -->
+                </div>
+
+                <div class="chat-input-area">
+                    <textarea id="userInput" placeholder="Type your argument..." rows="2"></textarea>
+                    <button id="sendBtn" class="btn-primary">
+                        <span class="btn-text">Send</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                    <button class="btn-secondary" id="newDebateBtn">🔄 New Topic</button>
+                    <button class="btn-secondary" id="endDebateBtn">🏁 End Debate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        let debateState = {
+            motion: '',
+            userPosition: '',
+            aiPosition: '',
+            history: [],
+            round: 1
+        };
+
+        // Start Debate
+        document.getElementById('startDebateBtn').addEventListener('click', () => {
+            const motion = document.getElementById('debateMotion').value.trim();
+            const position = document.getElementById('userPosition').value;
+
+            if (!motion) { showToast('Please enter a debate motion', 'error'); return; }
+
+            debateState.motion = motion;
+            debateState.userPosition = position;
+            debateState.aiPosition = position === 'proposition' ? 'opposition' : 'proposition';
+            debateState.history = [];
+            debateState.round = 1;
+
+            document.getElementById('setupPhase').style.display = 'none';
+            document.getElementById('debateArena').classList.add('active');
+            document.getElementById('motionDisplay').textContent = `"${motion}"`;
+            document.getElementById('roundCounter').textContent = 'Round 1';
+            document.getElementById('chatContainer').innerHTML = '';
+
+            // Add system message
+            addMessage('system', `Debate started! You are arguing as the ${position}. AI is the ${debateState.aiPosition}. Make your opening argument.`);
+            showToast('Debate started! Make your opening argument.', 'success');
+            document.getElementById('userInput').focus();
+        });
+
+        // Send Message
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        document.getElementById('userInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            const btn = document.getElementById('sendBtn');
+
+            if (!text) return;
+
+            // Add user message
+            addMessage('user', text);
+            debateState.history.push({ role: 'user', text });
+            input.value = '';
+
+            // Show typing indicator
+            const typing = addTypingIndicator();
+            setLoading(btn, true);
+
+            try {
+                const data = await apiCall('/api/debate-respond', {
+                    motion: debateState.motion,
+                    user_argument: text,
+                    ai_position: debateState.aiPosition,
+                    history: debateState.history
+                });
+
+                typing.remove();
+
+                if (data.success) {
+                    addMessage('ai', data.response);
+                    debateState.history.push({ role: 'ai', text: data.response });
+                    debateState.round++;
+                    document.getElementById('roundCounter').textContent = `Round ${Math.ceil(debateState.round / 2)}`;
+                } else {
+                    addMessage('system', 'AI couldn\'t respond. Try again.');
+                }
+            } catch (err) {
+                typing.remove();
+                addMessage('system', 'Connection error. Please try again.');
+            } finally {
+                setLoading(btn, false);
+                input.focus();
+            }
+        }
+
+        function addMessage(role, text) {
+            const container = document.getElementById('chatContainer');
+            const msg = document.createElement('div');
+
+            if (role === 'system') {
+                msg.style.cssText = 'text-align: center; font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem; font-style: italic;';
+                msg.textContent = text;
+            } else {
+                msg.className = `chat-msg ${role}`;
+                const roleLabel = role === 'user'
+                    ? `You (${debateState.userPosition})`
+                    : `AI (${debateState.aiPosition})`;
+                msg.innerHTML = `
+                    <div class="msg-role">${roleLabel}</div>
+                    <div>${text}</div>
+                `;
+            }
+
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+            return msg;
+        }
+
+        function addTypingIndicator() {
+            const container = document.getElementById('chatContainer');
+            const typing = document.createElement('div');
+            typing.className = 'chat-typing';
+            typing.innerHTML = '<span></span><span></span><span></span>';
+            container.appendChild(typing);
+            container.scrollTop = container.scrollHeight;
+            return typing;
+        }
+
+        // New Debate
+        document.getElementById('newDebateBtn').addEventListener('click', () => {
+            document.getElementById('debateArena').classList.remove('active');
+            document.getElementById('setupPhase').style.display = 'block';
+            document.getElementById('debateMotion').value = '';
+            showToast('Ready for a new debate!', 'info');
+        });
+
+        // End Debate
+        document.getElementById('endDebateBtn').addEventListener('click', () => {
+            const rounds = Math.ceil(debateState.round / 2);
+            addMessage('system', `Debate ended after ${rounds} round${rounds !== 1 ? 's' : ''}. Great debate! 🎉`);
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('userInput').disabled = true;
+            showToast(`Debate ended after ${rounds} rounds!`, 'success');
+        });
+    </script>
+</body>
+
+</html>

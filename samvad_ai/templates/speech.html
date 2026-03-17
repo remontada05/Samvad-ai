@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Evaluator — Samvad AI</title>
+    <meta name="description" content="Analyze and improve your debate speeches with AI-powered scoring and feedback.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <div class="logo-icon">🗣️</div>
+            <span class="nav-brand-text">Samvad AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('argument_page') }}">Arguments</a>
+            <a href="{{ url_for('rebuttal_page') }}">Rebuttal</a>
+            <a href="{{ url_for('speech_page') }}" class="active">Speech</a>
+            <a href="{{ url_for('judge_page') }}">Judge</a>
+            <a href="{{ url_for('debate_page') }}">Debate</a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="tool-container">
+            <header class="tool-header">
+                <h1 class="tool-title">🎤 Speech Evaluator</h1>
+                <p class="tool-subtitle">Get detailed AI-powered scoring and actionable feedback</p>
+            </header>
+
+            <div class="tool-interface">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label" for="speechText">Your Speech</label>
+                        <textarea id="speechText" placeholder="Paste or type your debate speech here..."
+                            rows="8"></textarea>
+                        <div class="word-counter" id="wordCounter">0 words</div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Evaluation Criteria</label>
+                        <div class="criteria-checkboxes">
+                            <label class="checkbox-label"><input type="checkbox" value="clarity" checked>
+                                Clarity</label>
+                            <label class="checkbox-label"><input type="checkbox" value="structure" checked>
+                                Structure</label>
+                            <label class="checkbox-label"><input type="checkbox" value="persuasiveness" checked>
+                                Persuasiveness</label>
+                            <label class="checkbox-label"><input type="checkbox" value="evidence"> Evidence</label>
+                        </div>
+                    </div>
+                    <button id="evaluateBtn" class="btn-primary">
+                        <span class="btn-text">Evaluate Speech</span>
+                        <span class="loading-dots"><span></span><span></span><span></span></span>
+                    </button>
+                </div>
+
+                <div class="output-section" id="outputSection">
+                    <div class="output-card">
+                        <div class="output-header">
+                            <h3 class="output-title">Speech Evaluation</h3>
+                            <span class="ai-tag" id="aiTag">✨ AI Powered</span>
+                        </div>
+                        <div id="evalContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        setupWordCounter('speechText', 'wordCounter');
+
+        document.getElementById('evaluateBtn').addEventListener('click', async () => {
+            const speech = document.getElementById('speechText').value.trim();
+            const checkboxes = document.querySelectorAll('.criteria-checkboxes input:checked');
+            const criteria = Array.from(checkboxes).map(cb => cb.value);
+            const btn = document.getElementById('evaluateBtn');
+            const output = document.getElementById('outputSection');
+            const container = document.getElementById('evalContainer');
+
+            if (!speech) { showToast('Please enter your speech text', 'error'); return; }
+            if (criteria.length === 0) { showToast('Select at least one criterion', 'error'); return; }
+
+            setLoading(btn, true);
+
+            try {
+                const data = await apiCall('/api/evaluate-speech', { speech, criteria });
+
+                if (data.success) {
+                    const ev = data.evaluation;
+                    const overall = data.overall_score;
+                    const percent = overall * 10;
+
+                    // Build analysis stats
+                    const analysis = ev.analysis || {};
+                    let statsHTML = '';
+                    if (analysis.word_count) {
+                        statsHTML = `
+                            <div class="analysis-stats">
+                                <div class="analysis-stat">
+                                    <div class="analysis-stat-value">${analysis.word_count}</div>
+                                    <div class="analysis-stat-label">Words</div>
+                                </div>
+                                <div class="analysis-stat">
+                                    <div class="analysis-stat-value">${analysis.sentence_count || '-'}</div>
+                                    <div class="analysis-stat-label">Sentences</div>
+                                </div>
+                                <div class="analysis-stat">
+                                    <div class="analysis-stat-value">${analysis.vocabulary_diversity || '-'}%</div>
+                                    <div class="analysis-stat-label">Vocab Diversity</div>
+                                </div>
+                                <div class="analysis-stat">
+                                    <div class="analysis-stat-value">${ev.reading_time || '-'}m</div>
+                                    <div class="analysis-stat-label">Read Time</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Score bars
+                    let scoreBarsHTML = '';
+                    if (ev.scores) {
+                        scoreBarsHTML = Object.entries(ev.scores).map(([criterion, score]) => `
+                            <div class="score-row">
+                                <span class="score-criteria-name">${criterion}</span>
+                                <div class="score-bar-track">
+                                    <div class="score-bar-fill" data-width="${score * 10}%"></div>
+                                </div>
+                                <span class="score-value">${score}/10</span>
+                            </div>
+                        `).join('');
+                    }
+
+                    // Suggestions
+                    let suggestionsHTML = '';
+                    if (ev.suggestions && ev.suggestions.length > 0) {
+                        suggestionsHTML = `
+                            <ul class="suggestions-list">
+                                ${ev.suggestions.map(s => `<li>${s}</li>`).join('')}
+                            </ul>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <div class="score-circle" style="--score-percent: ${percent}%">
+                            <div class="score-circle-inner">
+                                <span class="score-number">${overall}</span>
+                                <span class="score-out-of">out of 10</span>
+                            </div>
+                        </div>
+                        ${statsHTML}
+                        <div class="score-breakdown">${scoreBarsHTML}</div>
+                        <div class="feedback-section">
+                            <div class="feedback-title">💬 AI Feedback</div>
+                            <p class="feedback-text">${ev.feedback || 'Great speech! Keep practicing.'}</p>
+                            ${suggestionsHTML}
+                        </div>
+                    `;
+
+                    output.classList.add('visible');
+                    setTimeout(animateScoreBars, 100);
+                    showToast('Evaluation complete!', 'success');
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+    </script>
+</body>
+
+</html>
